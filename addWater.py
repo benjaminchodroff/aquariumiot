@@ -5,7 +5,7 @@ from waterSensor import readWaterLevel
 GPIO.setmode(GPIO.BCM)
 
 pinList = [2, 3, 4, 17, 27, 22, 10, 9 ]
-maxHeight = 26
+maxHeight = 27.5
 
 try:
 	sleep=int(sys.argv[1])

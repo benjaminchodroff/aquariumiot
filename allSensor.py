@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 import time
 import io
 from datetime import datetime
+from subprocess import call
 import status
 import relay3
 import relay4
@@ -16,11 +17,48 @@ from ibmiotf.codecs import jsonIotfCodec
 
 pinList = [2, 3, 4, 17, 27, 22, 10, 9 ]
 
-organization=""
-deviceType=""
-deviceId=""
+organization="5dj1dm"
+deviceType="chodroffaquarium"
+deviceId="b827eb14cce9"
 authMethod="token"
-authToken=""
+authToken="_BgZ1!vzosC?W1Jg-a"
+
+def myCommandCallback(cmd):
+	if (cmd.command == "control"):
+		# {u'd': {u'count': u'1', u'dosing': u'Phosphorus'}}
+		if('dosing' in cmd.data['d']):	
+			dosing=cmd.data['d']['dosing']
+			count=cmd.data['d']['count']
+			print "control=",dosing,count
+			if(dosing=="Nitrogen"):
+				relay="3"
+			elif(dosing=="Phosphorus"):
+				relay="4"
+			elif(dosing=="Potassium"):
+				relay="5"
+			elif(dosing=="Iron"):
+				relay="6"
+			elif(dosing=="Micro"):
+				relay="7"
+			else:
+				relay="8"
+			call("python /home/pi/addDosing.py "+str(count)+" "+str(relay)+"&",shell=True)
+		elif('toggleAlerting' in cmd.data['d']):
+			print "control=toggleAlerting"
+			alerting=status.alerting
+			if(alerting=="True"):
+				alerting="False"
+			else:
+				alerting="True"
+			call("/home/pi/alerts.sh "+alerting+"&",shell=True)
+		elif('waterChange' in cmd.data['d']):
+			print "control=waterChange"
+			call("/home/pi/waterChange.sh &", shell=True)
+		elif('waterTopoff' in cmd.data['d']):
+			print "control=waterTopoff"
+			call("python /home/pi/addWater.py 1200 &",shell=True) 
+		else:
+			print "unknown command" 
 
 def median(lst):
     sortedLst = sorted(lst)
@@ -69,9 +107,8 @@ def readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=1000):
 		time.sleep(0.001)
         return float(median(measurements))
 
-def getLine(ser_io, attempt=5, line=""):
+def getLine(ser_io, attempt=3, line=""):
         if (line.strip()=="" and attempt>0):
-		time.sleep(0.01)
                 attempt=attempt-1
                 line=(ser_io.readline()).strip()
                 line=getLine(ser_io,attempt,line)
@@ -186,6 +223,9 @@ try:
 		with open('/proc/uptime', 'r') as f:
 			uptime_seconds = float(f.readline().split()[0])
 
+		# Check for commands
+		deviceCli.commandCallback = myCommandCallback
+	
 		# Check Relay States
 		relay1status= not GPIO.input(pinList[0])
         	print "Relay1 - Water Change:",relay1status
@@ -211,13 +251,17 @@ try:
 		ser.flushInput()
 		time.sleep(waitSensor)
 		volFlow = getLine(ser_io)
-		try:
-			vol, flow = volFlow.split(",")
-			vol = float(vol)
-			flow = float(flow)
-		except:
-			vol = 'unknown'
-			flow = 'unknown'
+		for x in range(0,5):
+			try:	
+				vol, flow = volFlow.split(",")
+				vol = float(vol)
+				flow = float(flow)
+				break
+			except Exception as e:
+				time.sleep(1)
+				print e,volFlow
+				flow=0.0
+				vol=0.0
 		print "Flow:", flow
 		# Check pH
 		GPIO.output(7, GPIO.LOW)
@@ -229,11 +273,11 @@ try:
 		try:
 			pH = float(pH)
 		except:
-			pH = 'unknown'
+			pH = 0.0
 
 		print "pH:", pH
 		# Control CO2
-		if (pH < 6.25):
+		if (pH < 6.5):
 			print "CO2 OFF"
 			GPIO.output(pinList[1], GPIO.HIGH)
 		else:
@@ -250,12 +294,15 @@ try:
 		try:
 			temp = float(temp)
 		except:
-			temp = 'unknown'
+			temp = 0.0
 
 		print "Temperature:",temp
 
 		# Check Water Level
-		level=(readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=500)-109)/1.71
+		level=float(readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100))
+		level=0.5357*level - 80.679
+		if(level<0 or level>100):
+			level=0.0
 
 		print "Level:",str(level)	
 		# Publish data to IOTF

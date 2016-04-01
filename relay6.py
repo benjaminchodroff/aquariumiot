@@ -1,2 +1,2 @@
-relay6LastAdded="2016-02-22T15:05:01.849882"
-relay6Volume=4.0
+relay6LastAdded="2016-04-01T20:44:58.954565"
+relay6Volume=6.25

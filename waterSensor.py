@@ -68,7 +68,13 @@ def readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100):
 	return float(median(measurements))
 
 def readWaterLevel():
-	level=float((readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100)-109)/1.71)
+#	level=float((readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100)-0)/1)
+	level=readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100)
+#	print level
+#	level=0.5417*level - 92.542
+	level=0.5357*level - 80.679
+	if(level<0):
+		level=0.0
 	return level
 
 print "sensor:", str(readWaterLevel())
