@@ -1,2 +1,2 @@
-photosyn="2016-03-28T15:36:01-0500"
-photosynscore=52.5
+photosyn="2016-04-03T11:24:01-0500"
+photosynscore=51.0638297872

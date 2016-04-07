@@ -27,9 +27,11 @@ try:
 	GPIO.output(pinList[7], GPIO.HIGH)
 
 except KeyboardInterrupt:
+	GPIO.output(pinList[7], GPIO.HIGH)
         print "Stopping Water"
 
 except:
+	GPIO.output(pinList[7], GPIO.HIGH)
         print "Unexpected error!"
         raise
 

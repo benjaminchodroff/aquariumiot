@@ -11,7 +11,7 @@ import relay5
 import relay6
 import relay7
 import latestscore
-
+from waterSensor import readWaterLevel
 import ibmiotf.device
 from ibmiotf.codecs import jsonIotfCodec
 
@@ -59,53 +59,6 @@ def myCommandCallback(cmd):
 			call("python /home/pi/addWater.py 1200 &",shell=True) 
 		else:
 			print "unknown command" 
-
-def median(lst):
-    sortedLst = sorted(lst)
-    lstLen = len(lst)
-    index = (lstLen - 1) // 2
-
-    if (lstLen % 2):
-        return sortedLst[index]
-    else:
-        return (sortedLst[index] + sortedLst[index + 1])/2.0
-
-# read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
-def readadc(adcnum, clockpin, mosipin, misopin, cspin):
-        if ((adcnum > 7) or (adcnum < 0)):
-                return -1
-        GPIO.output(cspin, True)
-        GPIO.output(clockpin, False)  # start clock low
-        GPIO.output(cspin, False)     # bring CS low
-        commandout = adcnum
-        commandout |= 0x18  # start bit + single-ended bit
-        commandout <<= 3    # we only need to send 5 bits here
-        for i in range(5):
-                if (commandout & 0x80):
-                        GPIO.output(mosipin, True)
-                else:
-                        GPIO.output(mosipin, False)
-                commandout <<= 1
-                GPIO.output(clockpin, True)
-                GPIO.output(clockpin, False)
-        adcout = 0
-        # read in one empty bit, one null bit and 10 ADC bits
-        for i in range(12):
-                GPIO.output(clockpin, True)
-                GPIO.output(clockpin, False)
-                adcout <<= 1
-                if (GPIO.input(misopin)):
-                        adcout |= 0x1
-        GPIO.output(cspin, True)
-        adcout >>= 1       # first bit is 'null' so drop it
-        return adcout
-
-def readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=1000):
-        measurements=[]
-        for i in range(0,measure):
-                measurements.append(float(readadc(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS)))
-		time.sleep(0.001)
-        return float(median(measurements))
 
 def getLine(ser_io, attempt=3, line=""):
         if (line.strip()=="" and attempt>0):
@@ -207,15 +160,6 @@ try:
 #	GPIO.output(pinList[0], GPIO.LOW)
 	GPIO.output(pinList[1], GPIO.LOW)
 	
-	# Initialize Water Level
-	# set up the SPI interface pins
-	GPIO.setup(SPIMOSI, GPIO.OUT)
-	GPIO.setup(SPIMISO, GPIO.IN)
-	GPIO.setup(SPICLK, GPIO.OUT)
-	GPIO.setup(SPICS, GPIO.OUT)
-	# water level sensor
-	sensor_adc = 0;
-
 	time.sleep(3)
 	
 	# Loop
@@ -260,8 +204,10 @@ try:
 			except Exception as e:
 				time.sleep(1)
 				print e,volFlow
-				flow=0.0
-				vol=0.0
+				# if we error out, just use the last flow we had... not ideal
+				#flow=-1.0
+				#vol=-1.0
+				# TODO: error control
 		print "Flow:", flow
 		# Check pH
 		GPIO.output(7, GPIO.LOW)
@@ -269,11 +215,13 @@ try:
 		time.sleep(waitBuffer)
 		ser.flushInput()
 		time.sleep(waitSensor)
-		pH = getLine(ser_io)
 		try:
-			pH = float(pH)
+			pH = float(getLine(ser_io))
 		except:
-			pH = 0.0
+			#if we error out, just use the last pH we had
+			#pH = -1.0
+			# TODO: error control
+			pH = pH
 
 		print "pH:", pH
 		# Control CO2
@@ -290,19 +238,24 @@ try:
 		time.sleep(waitBuffer)
 		ser.flushInput()
 		time.sleep(waitSensor)
-		temp = getLine(ser_io)
 		try:
-			temp = float(temp)
+			temp = float(getLine(ser_io))
 		except:
-			temp = 0.0
-
+			# if we error out, just use the last temp we had
+			#temp = -1.0
+			# TODO: error control
+			temp = temp
 		print "Temperature:",temp
 
 		# Check Water Level
-		level=float(readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100))
-		level=0.5357*level - 80.679
+		try:
+			level=readWaterLevel(attempts=3)
+		except:
+			print "Exception in finding level"
 		if(level<0 or level>100):
-			level=0.0
+			# This should never happen, but let's return -1
+			# TODO: error control
+			level=-1.0
 
 		print "Level:",str(level)	
 		# Publish data to IOTF

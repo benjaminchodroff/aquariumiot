@@ -1,6 +1,21 @@
 import time
 import RPi.GPIO as GPIO
 
+# Two Point Calibration #
+calHigh = { "level": 26.0, "sensor": 746.5, "reference": 699.0 }
+calLow = { "level": 15.0, "sensor": 620.5, "reference": 699.0 }
+#################
+from numpy import ones,vstack
+from numpy.linalg import lstsq
+points = [
+	(calHigh['sensor'],calHigh['level']),
+	(calLow['sensor'],calLow['level'])
+]
+x_coords, y_coords = zip(*points)
+A = vstack([x_coords,ones(len(x_coords))]).T
+m, c = lstsq(A, y_coords)[0]
+#print "Line Solution is y = {m}x + {c}".format(m=m,c=c)
+
 def median(lst):
     sortedLst = sorted(lst)
     lstLen = len(lst)
@@ -60,22 +75,32 @@ GPIO.setup(SPICS, GPIO.OUT)
 # water level sensor
 sensor_adc = 0;
 
+# reference voltage (560 ohms with reference 1.2k ohm resistor to ground)
+reference_adc = 1;
+null_adc = 2;
+
 def readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100):
 	measurements=[]
 	for i in range(0,measure):
 		measurements.append(float(readadc(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS)))
-		time.sleep(0.005)
+		time.sleep(0.01)
 	return float(median(measurements))
 
-def readWaterLevel():
-#	level=float((readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100)-0)/1)
-	level=readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100)
-#	print level
-#	level=0.5417*level - 92.542
-	level=0.5357*level - 80.679
-	if(level<0):
-		level=0.0
+def readWaterLevel(attempts=3):
+	refmedian = readMedian(reference_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=10)
+	reference=699
+	median=readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=500)-(reference-refmedian)
+#	print 'median',median
+#	print 'refmedian',refmedian
+	level=m*median + c
+	if(level<0 or level>100):
+		if(attempts>0):
+			attempts=attempts-1
+#			print "trying again",attempts
+			level=readWaterLevel(attempts)
 	return level
 
-print "sensor:", str(readWaterLevel())
+if __name__ == "__main__" :
+	print "sensor:", str(readWaterLevel())
+
 
