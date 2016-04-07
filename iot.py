@@ -1,11 +1,6 @@
+import config
 import ibmiotf.device
 from ibmiotf.codecs import jsonIotfCodec
-
-organization="5dj1dm"
-deviceType="chodroffaquarium"
-deviceId="b827eb14cce9"
-authMethod="token"
-authToken="_BgZ1!vzosC?W1Jg-a"
 
 x = 12345
 

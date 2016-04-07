@@ -1,3 +1,4 @@
+import config
 import serial
 import RPi.GPIO as GPIO
 import time
@@ -16,12 +17,6 @@ import ibmiotf.device
 from ibmiotf.codecs import jsonIotfCodec
 
 pinList = [2, 3, 4, 17, 27, 22, 10, 9 ]
-
-organization="5dj1dm"
-deviceType="chodroffaquarium"
-deviceId="b827eb14cce9"
-authMethod="token"
-authToken="_BgZ1!vzosC?W1Jg-a"
 
 def myCommandCallback(cmd):
 	if (cmd.command == "control"):

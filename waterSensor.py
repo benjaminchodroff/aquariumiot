@@ -83,7 +83,7 @@ def readMedian(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS, measure=100):
 	measurements=[]
 	for i in range(0,measure):
 		measurements.append(float(readadc(sensor_adc, SPICLK, SPIMOSI, SPIMISO, SPICS)))
-		time.sleep(0.01)
+		time.sleep(0.001)
 	return float(median(measurements))
 
 def readWaterLevel(attempts=3):
