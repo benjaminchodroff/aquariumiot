@@ -48,10 +48,10 @@ def myCommandCallback(cmd):
 			call("/home/pi/alerts.sh "+alerting+"&",shell=True)
 		elif('waterChange' in cmd.data['d']):
 			print "control=waterChange"
-			call("/home/pi/waterChange.sh &", shell=True)
+			call("/home/pi/waterStage.sh 1", shell=True)
 		elif('waterTopoff' in cmd.data['d']):
 			print "control=waterTopoff"
-			call("python /home/pi/addWater.py 1200 &",shell=True) 
+			call("/home/pi/waterStage.sh 2",shell=True) 
 		else:
 			print "unknown command" 
 
