@@ -1,0 +1,35 @@
+#!/bin/bash
+# /etc/init.d/video
+
+### BEGIN INIT INFO
+# Provides:   video
+# Required-Start: $local_fs $remote_fs
+# Required-Stop:  $local_fs $remote_fs
+# Should-Start:   $network
+# Should-Stop:    $network
+# Default-Start:  2 3 4 5
+# Default-Stop:   0 1 6
+# Short-Description:    video 
+# Description:    This runs a script continuously in screen. 
+### END INIT INFO
+
+case "$1" in
+
+  start)
+        echo "Starting video"
+        (/home/pi/video.sh > /dev/null 2>&1) &
+        ;;
+  stop)
+        echo "Stopping video"
+	pkill -9 -f video.sh
+	pkill -9 -f ffmpeg
+	pkill -9 raspivid
+        ;;
+  *)
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop}" >&2
+        exit 1
+        ;;
+esac
+exit 0
+

@@ -71,11 +71,11 @@ SPICS = 25
 
 try:
         deviceOptions = {
-                "org": organization,
-                "type": deviceType,
-                "id": deviceId,
-                "auth-method": authMethod,
-                "auth-token": authToken }
+                "org": config.organization,
+                "type": config.deviceType,
+                "id": config.deviceId,
+                "auth-method": config.authMethod,
+                "auth-token": config.authToken }
         deviceCli = ibmiotf.device.Client(deviceOptions)
 	connected = False
 	while not connected:
@@ -148,15 +148,13 @@ try:
 	GPIO.output(7, GPIO.LOW)
 	GPIO.output(8, GPIO.HIGH)
 
-	# Initialize Relays
+	# Initialize Relays off
 	for i in pinList:
 	        GPIO.setup(i, GPIO.OUT)
 		GPIO.output(i, GPIO.HIGH)
-#	GPIO.output(pinList[0], GPIO.LOW)
-	GPIO.output(pinList[1], GPIO.LOW)
 	
 	time.sleep(3)
-	
+
 	# Loop
 	while True:
 		with open('/proc/uptime', 'r') as f:
@@ -253,6 +251,44 @@ try:
 			level=-1.0
 
 		print "Level:",str(level)	
+		# Water Addition Change
+		# 0 - no removal (stop all water removal and addition devices)
+		# 1 - remove water until 15.5 cm (water removal started, water addition stopped)
+		# 2 - add water until 27.5 cm (water removal stopped, water addition started)
+		if(status.waterStage==0):
+			print "waterStage 0"
+			GPIO.output(pinList[0], GPIO.HIGH) # Turn off water removal
+			GPIO.output(pinList[7], GPIO.HIGH) # Turn off water addition
+		if(status.waterStage==1):
+			print "waterStage 1"
+			print "Disabling alerts"
+			call("/home/pi/alerts.sh False", shell=True)
+			GPIO.output(pinList[7], GPIO.HIGH) # Turn off water addition (safety check)
+			if(level>=status.waterMin):
+				print "Removing water"
+				GPIO.output(pinList[0], GPIO.LOW) # Turn on water removal
+			else: 
+				print "Water level reached minimum"
+				print "Turning off water removal"
+				GPIO.output(pinList[0], GPIO.HIGH) # Turn off water removal
+				print "Setting waterStage 2"
+				call("/home/pi/waterStage.sh 2", shell=True)
+		if(status.waterStage==2):
+			print "waterStage 2"
+			GPIO.output(pinList[0], GPIO.HIGH) # Turn off water removal (safety check)
+			if(level<=status.waterMax):
+				print "Adding water"
+				GPIO.output(pinList[7], GPIO.LOW) # Turn on water addition
+			else:
+				print "Water level reached max"
+				print "Turning off water"
+				GPIO.output(pinList[7], GPIO.HIGH) # Turn off water addition
+				print "Setting waterStage 0"
+				call("/home/pi/waterStage.sh 0", shell=True)
+				print "Enabling alerts"
+				call("/home/pi/alerts.sh True", shell=True)
+			
+
 		# Publish data to IOTF
 		reload(status)
 		reload(relay3)
@@ -301,7 +337,14 @@ except Exception,e:
 	print "Unexpected error!"
         print str(e)
 	raise 
-finally:  
+finally:
+	print "Turn off all devices"
+	for i in pinList:
+                GPIO.setup(i, GPIO.OUT)
+                GPIO.output(i, GPIO.HIGH)
 	GPIO.cleanup() 
-        deviceCli.disconnect()
+        print "Disconnect from IBM IOT Foundation"
+	deviceCli.disconnect()
+	print "Goodbye!"
+
 

@@ -1,0 +1,30 @@
+#!/bin/bash
+# /etc/init.d/iotaquarium
+NAME="iotaquarium"
+### BEGIN INIT INFO
+# Provides:   iotaquarium
+# Required-Start:    $local_fs $network $named $time $syslog
+# Required-Stop:     $local_fs $network $named $time $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description:    iotaquarium
+# Description:    This runs a script continuously in screen. 
+### END INIT INFO
+
+case "$1" in
+  start)
+        echo "Starting iotaquarium"
+        (/home/pi/sensor.sh >> /dev/null 2>&1)&
+        ;;
+  stop)
+        echo "Stopping iotaquarium"
+        pkill -2 -f ensor
+	;;
+  *)
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop}" >&2
+        exit 1
+        ;;
+esac
+exit 0
+
