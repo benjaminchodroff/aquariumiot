@@ -1,7 +1,6 @@
 #!/bin/bash
 SERVER="rtmp://a.rtmp.youtube.com/live2"
-#KEY="benjamin.chodroff.h2rb-6137-ke3a-8be2"
-KEY="benjamin.chodroff.pzmc-vkhr-34je-cqd7"
+KEY=""
 
 while true
 do
